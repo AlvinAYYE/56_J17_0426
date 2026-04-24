@@ -38,6 +38,7 @@
       width: 768px;
       max-width: 100%;
       margin: 0 auto;
+      padding-top: 92px;
       display: grid;
       grid-template-columns: repeat(var(--per-row), 1fr);
       border: 2px solid #1f2937;
@@ -47,19 +48,14 @@
     .station {
       position: relative;
       min-height: 150px;
-      padding: 16px 10px;
+      padding: 0 10px;
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
     }
     .station::before,
     .station::after {
       content: "";
       position: absolute;
-      top: 75px;
+      top: 0;
       width: 50%;
       height: 8px;
       background: var(--line-color);
@@ -71,19 +67,17 @@
     .station.route-end-right::after {
       display: none;
     }
-    .station.turn-right .station-dot::after,
-    .station.turn-left .station-dot::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      z-index: -1;
-      width: 8px;
-      height: 150px;
-      transform: translateX(-50%);
-      background: var(--line-color);
+    .station.turn-right {
+      border-right: 8px solid var(--line-color);
+    }
+    .station.turn-left {
+      border-left: 8px solid var(--line-color);
     }
     .station-status {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -78px;
       min-height: 42px;
       font-size: 14px;
       line-height: 1.5;
@@ -91,7 +85,10 @@
       z-index: 2;
     }
     .station-dot {
-      position: relative;
+      position: absolute;
+      left: 50%;
+      top: 0;
+      transform: translate(-50%, -50%);
       z-index: 2;
       width: 38px;
       height: 38px;
@@ -100,6 +97,10 @@
       border: 5px solid #dbeafe;
     }
     .station-name {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 34px;
       font-weight: 700;
       z-index: 2;
     }
