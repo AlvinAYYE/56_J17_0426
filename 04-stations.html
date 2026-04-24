@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>04 站點管理 CRUD</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #1f2937;
+      background: #f4f7fb;
+    }
+    button, input {
+      font: inherit;
+    }
+    button {
+      border: 0;
+      padding: 8px 12px;
+      color: #fff;
+      background: #2563eb;
+      cursor: pointer;
+    }
+    button.secondary { background: #64748b; }
+    button.danger { background: #dc2626; }
+    input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #cbd5e1;
+    }
+    .page {
+      width: min(900px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0; font-size: 28px; }
+    .form {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+    }
+    th { background: #e2e8f0; }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .msg {
+      margin: 12px 0;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="page">
+      <div class="topbar">
+        <h1>站點管理</h1>
+        <a href="./05-buses.html">下一頁：車輛管理</a>
+      </div>
+
+      <section class="form">
+        <!-- v-model：輸入框內容會即時寫入 name，送出後由 addStation 或 updateStation 使用。 -->
+        <input v-model="name" placeholder="請輸入站點名稱，例如：台北車站">
+        <button @click="saveStation">{{ editId ? '修改站點' : '新增站點' }}</button>
+        <button class="secondary" @click="cancelEdit" v-if="editId">取消</button>
+      </section>
+
+      <p class="msg">目前共有 {{ stations.length }} 個站點。</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>站點名稱</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- v-for：stations 由 stations.php 回傳，每一筆顯示成一列。 -->
+          <tr v-for="station in stations" :key="station.id">
+            <td>{{ station.id }}</td>
+            <td>{{ station.name }}</td>
+            <td>
+              <div class="actions">
+                <button @click="startEdit(station)">編輯</button>
+                <button class="danger" @click="deleteStation(station.id)">刪除</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <script src="./vue.3.5.13.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+
+    createApp({
+      setup() {
+        const stations = ref([])
+        const name = ref('')
+        const editId = ref(null)
+
+        /*
+        函式英文名稱：loadStations
+        中文直譯名稱：載入站點
+        帶入項：無
+        回傳值：無
+        具體用途：向 stations.php 取得所有站點，放進 stations 陣列讓表格顯示。
+        會改動的資料：stations
+        */
+        function loadStations() {
+          fetch('./api/stations.php')
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function(data) {
+              stations.value = data.stations
+            })
+        }
+
+        /*
+        函式英文名稱：saveStation
+        中文直譯名稱：儲存站點
+        帶入項：無
+        回傳值：無
+        具體用途：依照 editId 是否存在，決定新增站點或修改站點。
+        會改動的資料：name、editId、stations
+        */
+        function saveStation() {
+          const method = editId.value ? 'PUT' : 'POST'
+          const body = editId.value
+            ? { id: editId.value, name: name.value }
+            : { name: name.value }
+
+          fetch('./api/stations.php', {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          })
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function() {
+              cancelEdit()
+              loadStations()
+            })
+        }
+
+        /*
+        函式英文名稱：startEdit
+        中文直譯名稱：開始編輯
+        帶入項：station，代表被點擊的站點資料。
+        回傳值：無
+        具體用途：把表格中的站點資料帶回上方表單。
+        會改動的資料：name、editId
+        */
+        function startEdit(station) {
+          editId.value = station.id
+          name.value = station.name
+        }
+
+        /*
+        函式英文名稱：cancelEdit
+        中文直譯名稱：取消編輯
+        帶入項：無
+        回傳值：無
+        具體用途：清空表單，回到新增模式。
+        會改動的資料：name、editId
+        */
+        function cancelEdit() {
+          editId.value = null
+          name.value = ''
+        }
+
+        /*
+        函式英文名稱：deleteStation
+        中文直譯名稱：刪除站點
+        帶入項：id，代表要刪除的站點編號。
+        回傳值：無
+        具體用途：把 id 送到 stations.php 刪除資料，完成後重新載入列表。
+        會改動的資料：stations
+        */
+        function deleteStation(id) {
+          fetch('./api/stations.php', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+          })
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function() {
+              loadStations()
+            })
+        }
+
+        loadStations()
+
+        return {
+          stations,
+          name,
+          editId,
+          loadStations,
+          saveStation,
+          startEdit,
+          cancelEdit,
+          deleteStation
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>

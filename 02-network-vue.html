@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>02 Vue 資料產生路網圖</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #1f2937;
+      background: #f4f7fb;
+    }
+    .page {
+      width: min(960px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .tag {
+      padding: 6px 10px;
+      border: 1px solid #2563eb;
+      color: #1d4ed8;
+      background: #eff6ff;
+      font-size: 14px;
+    }
+    .network {
+      width: 768px;
+      max-width: 100%;
+      margin: 0 auto;
+      display: grid;
+      border: 2px solid #1f2937;
+      background: #fff;
+    }
+    .station {
+      min-height: 150px;
+      padding: 16px 10px;
+      border: 1px solid #9ca3af;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .station-status {
+      min-height: 42px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #374151;
+    }
+    .station-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 5px solid #dbeafe;
+    }
+    .station-name {
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="page">
+      <div class="topbar">
+        <h1>{{ routeName }} 路網圖</h1>
+        <div class="tag">每列 {{ perRow }} 站</div>
+      </div>
+
+      <!-- :style：讓每列站點數由 perRow 決定，不把 3 寫死在 CSS。 -->
+      <section class="network" :style="{ gridTemplateColumns: 'repeat(' + perRow + ', 1fr)' }">
+        <!-- v-for：把 stations 陣列中的每一筆站點資料轉成畫面上的一格 station。 -->
+        <!-- :key：使用 station.id 當身份，讓 Vue 更新列表時能穩定追蹤每一站。 -->
+        <div class="station" v-for="station in stations" :key="station.id">
+          <div class="station-status">
+            <!-- v-if：根據後端資料中的 status 決定目前這站要顯示哪種狀態。 -->
+            <template v-if="station.status === 'not_started'">
+              未發車
+            </template>
+
+            <template v-else-if="station.status === 'running'">
+              {{ station.plate }}<br>
+              約 {{ station.minutes }} 分鐘
+            </template>
+
+            <template v-else-if="station.status === 'arrived'">
+              {{ station.plate }}<br>
+              已到站
+            </template>
+          </div>
+
+          <div class="station-dot"></div>
+          <div class="station-name">{{ station.name }}</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./vue.3.5.13.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+
+    createApp({
+      setup() {
+        // routeName 是路線名稱，給標題顯示。
+        const routeName = ref('板南線')
+
+        // perRow 控制 CSS Grid 一列顯示幾個站點。
+        const perRow = ref(3)
+
+        // stations 是給 v-for 使用的陣列；每一筆代表路網圖中的一站。
+        const stations = ref([
+          { id: 1, name: '台北車站', status: 'arrived', plate: 'C12345', minutes: 0 },
+          { id: 2, name: '西門', status: 'arrived', plate: 'C12345', minutes: 0 },
+          { id: 3, name: '龍山寺', status: 'running', plate: 'C12345', minutes: 2 },
+          { id: 4, name: '江子翠', status: 'not_started', plate: '', minutes: null },
+          { id: 5, name: '新埔', status: 'not_started', plate: '', minutes: null },
+          { id: 6, name: '板橋', status: 'not_started', plate: '', minutes: null }
+        ])
+
+        return {
+          routeName,
+          perRow,
+          stations
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>03 fetch PHP 路網圖資料</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #1f2937;
+      background: #f4f7fb;
+    }
+    button, select, input {
+      font: inherit;
+    }
+    button {
+      border: 0;
+      padding: 9px 14px;
+      color: #fff;
+      background: #2563eb;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .page {
+      width: min(960px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tag {
+      padding: 6px 10px;
+      border: 1px solid #2563eb;
+      color: #1d4ed8;
+      background: #eff6ff;
+      font-size: 14px;
+    }
+    .network {
+      width: 768px;
+      max-width: 100%;
+      margin: 0 auto;
+      display: grid;
+      border: 2px solid #1f2937;
+      background: #fff;
+    }
+    .station {
+      min-height: 150px;
+      padding: 16px 10px;
+      border: 1px solid #9ca3af;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .station-status {
+      min-height: 42px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #374151;
+    }
+    .station-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 5px solid #dbeafe;
+    }
+    .station-name {
+      font-weight: 700;
+    }
+    .message {
+      width: 768px;
+      max-width: 100%;
+      margin: 12px auto 0;
+      color: #475569;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="page">
+      <div class="topbar">
+        <div>
+          <h1>{{ routeName || '路網圖載入中' }}</h1>
+          <div class="message">資料來源：api/network.php。每按一次會重新向 PHP 拿資料。</div>
+        </div>
+
+        <div class="tools">
+          <div class="tag">每列 {{ perRow }} 站</div>
+          <!-- @click：按下後重新向 PHP 拿資料，讓路網圖依照新資料更新。 -->
+          <button @click="loadNetwork" :disabled="isLoading">
+            {{ isLoading ? '載入中' : '重新取得資料' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- :style：PHP 回傳 perRow 後，Vue 會把它套進 CSS Grid 欄數。 -->
+      <section class="network" :style="{ gridTemplateColumns: 'repeat(' + perRow + ', 1fr)' }">
+        <!-- v-for：路網圖中的站點完全由 PHP 回傳的 stations 陣列產生。 -->
+        <div class="station" v-for="station in stations" :key="station.id">
+          <div class="station-status">
+            <template v-if="station.status === 'not_started'">
+              未發車
+            </template>
+
+            <template v-else-if="station.status === 'running'">
+              {{ station.plate }}<br>
+              約 {{ station.minutes }} 分鐘
+            </template>
+
+            <template v-else-if="station.status === 'arrived'">
+              {{ station.plate }}<br>
+              已到站
+            </template>
+          </div>
+
+          <div class="station-dot"></div>
+          <div class="station-name">{{ station.name }}</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./vue.3.5.13.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+
+    createApp({
+      setup() {
+        const routeName = ref('')
+        const perRow = ref(3)
+        const stations = ref([])
+        const isLoading = ref(false)
+
+        /*
+        函式英文名稱：loadNetwork
+        中文直譯名稱：載入路網
+        帶入項：無
+        回傳值：無
+        具體用途：向 api/network.php 取得路線名稱、每列站點數與站點狀態，並更新畫面。
+        會改動的資料：routeName、perRow、stations、isLoading
+        */
+        function loadNetwork() {
+          isLoading.value = true
+
+          fetch('./api/network.php')
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function(data) {
+              routeName.value = data.routeName
+              perRow.value = data.perRow
+              stations.value = data.stations
+            })
+            .catch(function(error) {
+              console.log(error)
+            })
+            .finally(function() {
+              isLoading.value = false
+            })
+        }
+
+        loadNetwork()
+
+        return {
+          routeName,
+          perRow,
+          stations,
+          isLoading,
+          loadNetwork
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>

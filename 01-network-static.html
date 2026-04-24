@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>01 路網圖靜態切版</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #1f2937;
+      background: #f4f7fb;
+    }
+
+    .page {
+      width: min(960px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .tag {
+      padding: 6px 10px;
+      border: 1px solid #2563eb;
+      color: #1d4ed8;
+      background: #eff6ff;
+      font-size: 14px;
+    }
+
+    .network {
+      width: 768px;
+      max-width: 100%;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 2px solid #1f2937;
+      background: #fff;
+    }
+
+    .station {
+      min-height: 150px;
+      padding: 16px 10px;
+      border: 1px solid #9ca3af;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .station-status {
+      min-height: 42px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #374151;
+    }
+
+    .station-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #2563eb;
+      border: 5px solid #dbeafe;
+    }
+
+    .station-name {
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="topbar">
+      <h1>板南線路網圖靜態切版</h1>
+      <div class="tag">寬度 768px / 每列 3 站</div>
+    </div>
+
+    <!-- 這一頁先不使用 Vue，目標是看懂一格站點與整張路網圖的 HTML/CSS 結構。 -->
+    <section class="network">
+      <div class="station">
+        <div class="station-status">未發車</div>
+        <div class="station-dot"></div>
+        <div class="station-name">台北車站</div>
+      </div>
+
+      <div class="station">
+        <div class="station-status">C12345<br>約 1 分鐘</div>
+        <div class="station-dot"></div>
+        <div class="station-name">西門</div>
+      </div>
+
+      <div class="station">
+        <div class="station-status">C12345<br>已到站</div>
+        <div class="station-dot"></div>
+        <div class="station-name">龍山寺</div>
+      </div>
+
+      <div class="station">
+        <div class="station-status">未發車</div>
+        <div class="station-dot"></div>
+        <div class="station-name">江子翠</div>
+      </div>
+
+      <div class="station">
+        <div class="station-status">未發車</div>
+        <div class="station-dot"></div>
+        <div class="station-name">新埔</div>
+      </div>
+
+      <div class="station">
+        <div class="station-status">未發車</div>
+        <div class="station-dot"></div>
+        <div class="station-name">板橋</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

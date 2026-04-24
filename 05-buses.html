@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>05 車輛管理 CRUD</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #1f2937;
+      background: #f4f7fb;
+    }
+    button, input, select { font: inherit; }
+    button {
+      border: 0;
+      padding: 8px 12px;
+      color: #fff;
+      background: #2563eb;
+      cursor: pointer;
+    }
+    button.secondary { background: #64748b; }
+    button.danger { background: #dc2626; }
+    input, select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+    }
+    .page {
+      width: min(980px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0; font-size: 28px; }
+    .form {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr auto auto;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+    }
+    th { background: #e2e8f0; }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="page">
+      <div class="topbar">
+        <h1>車輛管理</h1>
+        <div>
+          <a href="./04-stations.html">站點管理</a>
+          |
+          <a href="./06-routes.html">路線管理</a>
+        </div>
+      </div>
+
+      <section class="form">
+        <!-- v-model.number：選到的路線 id 會寫入 routeId，送出新增車輛時使用。 -->
+        <select v-model.number="routeId" :disabled="editId">
+          <option value="">請選擇路線</option>
+          <option v-for="route in routes" :key="route.id" :value="route.id">
+            {{ route.name }}
+          </option>
+        </select>
+
+        <input v-model="plate" placeholder="車牌，例如：C12345" :disabled="editId">
+        <input v-model.number="runtime" type="number" min="0" placeholder="已行駛時間">
+        <button @click="saveBus">{{ editId ? '修改時間' : '新增車輛' }}</button>
+        <button class="secondary" @click="cancelEdit" v-if="editId">取消</button>
+      </section>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>路線</th>
+            <th>車牌</th>
+            <th>已行駛時間</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="bus in buses" :key="bus.id">
+            <td>{{ bus.id }}</td>
+            <td>{{ bus.route_name }}</td>
+            <td>{{ bus.plate }}</td>
+            <td>{{ bus.runtime }} 分鐘</td>
+            <td>
+              <div class="actions">
+                <button @click="startEdit(bus)">編輯</button>
+                <button class="danger" @click="deleteBus(bus.id)">刪除</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <script src="./vue.3.5.13.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+
+    createApp({
+      setup() {
+        const buses = ref([])
+        const routes = ref([])
+        const editId = ref(null)
+        const routeId = ref('')
+        const plate = ref('')
+        const runtime = ref(0)
+
+        /*
+        函式英文名稱：loadBuses
+        中文直譯名稱：載入車輛
+        帶入項：無
+        回傳值：無
+        具體用途：向 buses.php 取得車輛列表與路線選單資料。
+        會改動的資料：buses、routes
+        */
+        function loadBuses() {
+          fetch('./api/buses.php')
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function(data) {
+              buses.value = data.buses
+              routes.value = data.routes
+            })
+        }
+
+        /*
+        函式英文名稱：saveBus
+        中文直譯名稱：儲存車輛
+        帶入項：無
+        回傳值：無
+        具體用途：新增車輛，或在編輯模式下修改已行駛時間。
+        會改動的資料：routeId、plate、runtime、editId、buses
+        */
+        function saveBus() {
+          const method = editId.value ? 'PUT' : 'POST'
+          const body = editId.value
+            ? { id: editId.value, runtime: runtime.value }
+            : { route_id: routeId.value, plate: plate.value, runtime: runtime.value }
+
+          fetch('./api/buses.php', {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          })
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function() {
+              cancelEdit()
+              loadBuses()
+            })
+        }
+
+        /*
+        函式英文名稱：startEdit
+        中文直譯名稱：開始編輯
+        帶入項：bus，代表被點擊的車輛資料。
+        回傳值：無
+        具體用途：把車輛資料帶入表單；正式賽編輯車輛主要修改 runtime。
+        會改動的資料：editId、routeId、plate、runtime
+        */
+        function startEdit(bus) {
+          editId.value = bus.id
+          routeId.value = Number(bus.route_id)
+          plate.value = bus.plate
+          runtime.value = Number(bus.runtime)
+        }
+
+        /*
+        函式英文名稱：cancelEdit
+        中文直譯名稱：取消編輯
+        帶入項：無
+        回傳值：無
+        具體用途：清空車輛表單，回到新增模式。
+        會改動的資料：editId、routeId、plate、runtime
+        */
+        function cancelEdit() {
+          editId.value = null
+          routeId.value = ''
+          plate.value = ''
+          runtime.value = 0
+        }
+
+        /*
+        函式英文名稱：deleteBus
+        中文直譯名稱：刪除車輛
+        帶入項：id，代表要刪除的車輛編號。
+        回傳值：無
+        具體用途：刪除指定車輛，完成後重新載入列表。
+        會改動的資料：buses
+        */
+        function deleteBus(id) {
+          fetch('./api/buses.php', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+          })
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function() {
+              loadBuses()
+            })
+        }
+
+        loadBuses()
+
+        return {
+          buses,
+          routes,
+          editId,
+          routeId,
+          plate,
+          runtime,
+          saveBus,
+          startEdit,
+          cancelEdit,
+          deleteBus
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>

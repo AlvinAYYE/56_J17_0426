@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>06 路線管理 CRUD</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft JhengHei", Arial, sans-serif;
+      color: #1f2937;
+      background: #f4f7fb;
+    }
+    button, input, select { font: inherit; }
+    button {
+      border: 0;
+      padding: 8px 12px;
+      color: #fff;
+      background: #2563eb;
+      cursor: pointer;
+    }
+    button.secondary { background: #64748b; }
+    button.danger { background: #dc2626; }
+    input, select {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+    }
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0; font-size: 28px; }
+    h2 { margin: 24px 0 12px; font-size: 20px; }
+    .form {
+      display: grid;
+      grid-template-columns: 1.5fr 160px auto auto;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .route-station {
+      display: grid;
+      grid-template-columns: 1.5fr 120px 120px 120px auto;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+    }
+    th { background: #e2e8f0; }
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+    .panel {
+      padding: 16px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      margin-bottom: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="page">
+      <div class="topbar">
+        <h1>路線管理</h1>
+        <div>
+          <a href="./04-stations.html">站點管理</a>
+          |
+          <a href="./05-buses.html">車輛管理</a>
+        </div>
+      </div>
+
+      <section class="panel">
+        <h2>{{ editId ? '修改路線' : '新增路線' }}</h2>
+
+        <div class="form">
+          <input v-model="routeName" placeholder="路線名稱，例如：板南線練習路線">
+          <input v-model.number="perRow" type="number" min="1" placeholder="每列站點數">
+          <button @click="addRouteStation">加入站點</button>
+          <button class="secondary" @click="clearForm">清空</button>
+        </div>
+
+        <!-- v-for：routeStations 是目前這條路線的中介表資料，一列代表路線中的一站。 -->
+        <div class="route-station" v-for="(item, index) in routeStations" :key="index">
+          <select v-model.number="item.station_id">
+            <option value="">選擇站點</option>
+            <option v-for="station in allStations" :key="station.id" :value="station.id">
+              {{ station.name }}
+            </option>
+          </select>
+          <input v-model.number="item.sort_order" type="number" min="1" placeholder="順序">
+          <input v-model.number="item.drive_time" type="number" min="0" placeholder="行駛時間">
+          <input v-model.number="item.stop_time" type="number" min="0" placeholder="停留時間">
+          <button class="danger" @click="removeRouteStation(index)">移除</button>
+        </div>
+
+        <div class="actions">
+          <button @click="saveRoute">{{ editId ? '修改路線' : '新增路線' }}</button>
+          <button class="secondary" @click="clearForm" v-if="editId">取消編輯</button>
+        </div>
+      </section>
+
+      <h2>路線列表</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>路線名稱</th>
+            <th>站點數量</th>
+            <th>每列站點數</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="route in routes" :key="route.id">
+            <td>{{ route.id }}</td>
+            <td>{{ route.name }}</td>
+            <td>{{ route.station_count }}</td>
+            <td>{{ route.per_row }}</td>
+            <td>
+              <div class="actions">
+                <button @click="editRoute(route.id)">編輯</button>
+                <button class="danger" @click="deleteRoute(route.id)">刪除</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </main>
+  </div>
+
+  <script src="./vue.3.5.13.js"></script>
+  <script>
+    const { createApp, ref } = Vue
+
+    createApp({
+      setup() {
+        const routes = ref([])
+        const allStations = ref([])
+        const editId = ref(null)
+        const routeName = ref('')
+        const perRow = ref(3)
+        const routeStations = ref([])
+
+        /*
+        函式英文名稱：loadRoutes
+        中文直譯名稱：載入路線
+        帶入項：無
+        回傳值：無
+        具體用途：讀取路線列表與可選站點，讓列表和表單選單更新。
+        會改動的資料：routes、allStations
+        */
+        function loadRoutes() {
+          fetch('./api/routes.php')
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function(data) {
+              routes.value = data.routes
+              allStations.value = data.stations
+            })
+        }
+
+        /*
+        函式英文名稱：addRouteStation
+        中文直譯名稱：加入路線站點
+        帶入項：無
+        回傳值：無
+        具體用途：在路線表單中新增一列中介表設定。
+        會改動的資料：routeStations
+        */
+        function addRouteStation() {
+          routeStations.value.push({
+            station_id: '',
+            sort_order: routeStations.value.length + 1,
+            drive_time: 1,
+            stop_time: 1
+          })
+        }
+
+        /*
+        函式英文名稱：removeRouteStation
+        中文直譯名稱：移除路線站點
+        帶入項：index，代表要移除的表單列位置。
+        回傳值：無
+        具體用途：從目前路線中移除一個站點設定。
+        會改動的資料：routeStations
+        */
+        function removeRouteStation(index) {
+          routeStations.value.splice(index, 1)
+        }
+
+        /*
+        函式英文名稱：saveRoute
+        中文直譯名稱：儲存路線
+        帶入項：無
+        回傳值：無
+        具體用途：新增或修改路線，同時送出 route_stations 中介表資料。
+        會改動的資料：routes、routeName、perRow、routeStations、editId
+        */
+        function saveRoute() {
+          const method = editId.value ? 'PUT' : 'POST'
+          const body = {
+            name: routeName.value,
+            per_row: perRow.value,
+            stations: routeStations.value
+          }
+
+          if (editId.value) {
+            body.id = editId.value
+          }
+
+          fetch('./api/routes.php', {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+          })
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function() {
+              clearForm()
+              loadRoutes()
+            })
+        }
+
+        /*
+        函式英文名稱：editRoute
+        中文直譯名稱：編輯路線
+        帶入項：id，代表要編輯的路線編號。
+        回傳值：無
+        具體用途：讀取單一路線與它的站點設定，帶回表單。
+        會改動的資料：editId、routeName、perRow、routeStations
+        */
+        function editRoute(id) {
+          fetch('./api/routes.php?id=' + id)
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function(data) {
+              editId.value = data.route.id
+              routeName.value = data.route.name
+              perRow.value = Number(data.route.per_row)
+              routeStations.value = data.routeStations.map(function(item) {
+                return {
+                  station_id: Number(item.station_id),
+                  sort_order: Number(item.sort_order),
+                  drive_time: Number(item.drive_time),
+                  stop_time: Number(item.stop_time)
+                }
+              })
+            })
+        }
+
+        /*
+        函式英文名稱：deleteRoute
+        中文直譯名稱：刪除路線
+        帶入項：id，代表要刪除的路線編號。
+        回傳值：無
+        具體用途：刪除路線、路線站點設定，以及該路線下的車輛。
+        會改動的資料：routes
+        */
+        function deleteRoute(id) {
+          fetch('./api/routes.php', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id: id })
+          })
+            .then(function(response) {
+              return response.json()
+            })
+            .then(function() {
+              loadRoutes()
+            })
+        }
+
+        /*
+        函式英文名稱：clearForm
+        中文直譯名稱：清空表單
+        帶入項：無
+        回傳值：無
+        具體用途：清空路線表單，回到新增模式。
+        會改動的資料：editId、routeName、perRow、routeStations
+        */
+        function clearForm() {
+          editId.value = null
+          routeName.value = ''
+          perRow.value = 3
+          routeStations.value = []
+        }
+
+        loadRoutes()
+        addRouteStation()
+
+        return {
+          routes,
+          allStations,
+          editId,
+          routeName,
+          perRow,
+          routeStations,
+          loadRoutes,
+          addRouteStation,
+          removeRouteStation,
+          saveRoute,
+          editRoute,
+          deleteRoute,
+          clearForm
+        }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>
