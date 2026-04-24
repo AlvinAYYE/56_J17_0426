@@ -58,13 +58,15 @@
       max-width: 100%;
       margin: 0 auto;
       display: grid;
+      grid-template-columns: repeat(var(--per-row), 1fr);
       border: 2px solid #1f2937;
       background: #fff;
+      --line-color: #2563eb;
     }
     .station {
+      position: relative;
       min-height: 150px;
       padding: 16px 10px;
-      border: 1px solid #9ca3af;
       text-align: center;
       display: flex;
       flex-direction: column;
@@ -72,13 +74,44 @@
       justify-content: center;
       gap: 10px;
     }
+    .station::before,
+    .station::after {
+      content: "";
+      position: absolute;
+      top: 75px;
+      width: 50%;
+      height: 8px;
+      background: var(--line-color);
+    }
+    .station::before { left: 0; }
+    .station::after { right: 0; }
+    .station.route-start::before,
+    .station.route-end-left::before,
+    .station.route-end-right::after {
+      display: none;
+    }
+    .station.turn-right .station-dot::after,
+    .station.turn-left .station-dot::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: -1;
+      width: 8px;
+      height: 150px;
+      transform: translateX(-50%);
+      background: var(--line-color);
+    }
     .station-status {
       min-height: 42px;
       font-size: 14px;
       line-height: 1.5;
       color: #374151;
+      z-index: 2;
     }
     .station-dot {
+      position: relative;
+      z-index: 2;
       width: 38px;
       height: 38px;
       border-radius: 50%;
@@ -87,6 +120,7 @@
     }
     .station-name {
       font-weight: 700;
+      z-index: 2;
     }
     .message {
       width: 768px;
@@ -115,28 +149,28 @@
         </div>
       </div>
 
-      <!-- :style：PHP 回傳 perRow 後，Vue 會把它套進 CSS Grid 欄數。 -->
-      <section class="network" :style="{ gridTemplateColumns: 'repeat(' + perRow + ', 1fr)' }">
-        <!-- v-for：路網圖中的站點完全由 PHP 回傳的 stations 陣列產生。 -->
-        <div class="station" v-for="station in stations" :key="station.id">
+      <!-- :style：PHP 回傳 perRow 後，CSS Grid 會依照它切欄。 -->
+      <section class="network" :style="{ '--per-row': perRow }">
+        <!-- v-for：displayStations 已經把偶數列反轉，讓 Grid 看起來是蛇行路線。 -->
+        <div class="station" v-for="item in displayStations" :key="item.station.id" :class="item.classList">
           <div class="station-status">
-            <template v-if="station.status === 'not_started'">
+            <template v-if="item.station.status === 'not_started'">
               未發車
             </template>
 
-            <template v-else-if="station.status === 'running'">
-              {{ station.plate }}<br>
-              約 {{ station.minutes }} 分鐘
+            <template v-else-if="item.station.status === 'running'">
+              {{ item.station.plate }}<br>
+              約 {{ item.station.minutes }} 分鐘
             </template>
 
-            <template v-else-if="station.status === 'arrived'">
-              {{ station.plate }}<br>
+            <template v-else-if="item.station.status === 'arrived'">
+              {{ item.station.plate }}<br>
               已到站
             </template>
           </div>
 
           <div class="station-dot"></div>
-          <div class="station-name">{{ station.name }}</div>
+          <div class="station-name">{{ item.station.name }}</div>
         </div>
       </section>
     </main>
@@ -144,7 +178,7 @@
 
   <script src="./vue.3.5.13.js"></script>
   <script>
-    const { createApp, ref } = Vue
+    const { createApp, computed, ref } = Vue
 
     createApp({
       setup() {
@@ -152,6 +186,44 @@
         const perRow = ref(3)
         const stations = ref([])
         const isLoading = ref(false)
+
+        // displayStations 會把資料轉成 Grid 顯示順序；奇數列反轉，畫面會像路線圖一樣蛇行。
+        const displayStations = computed(function() {
+          const items = []
+          const total = stations.value.length
+          const rowCount = Math.ceil(total / perRow.value)
+
+          for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+            const start = rowIndex * perRow.value
+            const row = stations.value.slice(start, start + perRow.value)
+            const isReverse = rowIndex % 2 === 1
+            const showRow = isReverse ? row.slice().reverse() : row
+
+            showRow.forEach(function(station) {
+              const routeIndex = stations.value.indexOf(station)
+              const classList = []
+
+              if (routeIndex === 0) {
+                classList.push('route-start')
+              }
+
+              if (routeIndex === total - 1) {
+                classList.push(isReverse ? 'route-end-left' : 'route-end-right')
+              }
+
+              if (rowIndex < rowCount - 1 && routeIndex === start + row.length - 1) {
+                classList.push(isReverse ? 'turn-left' : 'turn-right')
+              }
+
+              items.push({
+                station: station,
+                classList: classList
+              })
+            })
+          }
+
+          return items
+        })
 
         /*
         函式英文名稱：loadNetwork
@@ -187,6 +259,7 @@
           routeName,
           perRow,
           stations,
+          displayStations,
           isLoading,
           loadNetwork
         }
