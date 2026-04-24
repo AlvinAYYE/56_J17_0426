@@ -86,6 +86,10 @@
     .station.route-end-right::after {
       display: none;
     }
+    .station.blank::before,
+    .station.blank::after {
+      display: none;
+    }
     .station.turn-right {
       border-right: 8px solid var(--line-color);
     }
@@ -152,26 +156,28 @@
 
       <!-- :style：PHP 回傳 perRow 後，CSS Grid 會依照它切欄。 -->
       <section class="network" :style="{ '--per-row': perRow }">
-        <!-- v-for：displayStations 已經把偶數列反轉，讓 Grid 看起來是蛇行路線。 -->
-        <div class="station" v-for="item in displayStations" :key="item.station.id" :class="item.classList">
-          <div class="station-status">
-            <template v-if="item.station.status === 'not_started'">
-              未發車
-            </template>
+        <!-- v-for：displayStations 已經把偶數列反轉；反向列不足一列時會先補空白格，讓站點靠右接上轉折線。 -->
+        <div class="station" v-for="item in displayStations" :key="item.key" :class="item.classList">
+          <template v-if="item.station">
+            <div class="station-status">
+              <template v-if="item.station.status === 'not_started'">
+                未發車
+              </template>
 
-            <template v-else-if="item.station.status === 'running'">
-              {{ item.station.plate }}<br>
-              約 {{ item.station.minutes }} 分鐘
-            </template>
+              <template v-else-if="item.station.status === 'running'">
+                {{ item.station.plate }}<br>
+                約 {{ item.station.minutes }} 分鐘
+              </template>
 
-            <template v-else-if="item.station.status === 'arrived'">
-              {{ item.station.plate }}<br>
-              已到站
-            </template>
-          </div>
+              <template v-else-if="item.station.status === 'arrived'">
+                {{ item.station.plate }}<br>
+                已到站
+              </template>
+            </div>
 
-          <div class="station-dot"></div>
-          <div class="station-name">{{ item.station.name }}</div>
+            <div class="station-dot"></div>
+            <div class="station-name">{{ item.station.name }}</div>
+          </template>
         </div>
       </section>
     </main>
@@ -199,6 +205,15 @@
             const row = stations.value.slice(start, start + perRow.value)
             const isReverse = rowIndex % 2 === 1
             const showRow = isReverse ? row.slice().reverse() : row
+            const blankCount = isReverse ? perRow.value - row.length : 0
+
+            for (let i = 0; i < blankCount; i++) {
+              items.push({
+                key: 'blank-' + rowIndex + '-' + i,
+                station: null,
+                classList: ['blank']
+              })
+            }
 
             showRow.forEach(function(station) {
               const routeIndex = stations.value.indexOf(station)
@@ -217,6 +232,7 @@
               }
 
               items.push({
+                key: 'station-' + station.id,
                 station: station,
                 classList: classList
               })
